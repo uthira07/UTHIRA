@@ -1,0 +1,40 @@
+class Solution:
+    def numBusesToDestination(self, routes: List[List[int]], source: int, target: int) -> int:
+        if source == target:
+            return 0
+        
+        # 1. Map each stop to the buses that visit it
+        stop_to_buses = defaultdict(list)
+        for bus_id, stops in enumerate(routes):
+            for stop in stops:
+                stop_to_buses[stop].append(bus_id)
+        
+        # 2. Initialize BFS
+        # Queue stores (bus_id, bus_count)
+        queue = deque()
+        visited_buses = set()
+        visited_stops = {source}
+        
+        # Add all buses available at the source stop
+        for bus_id in stop_to_buses[source]:
+            visited_buses.add(bus_id)
+            queue.append((bus_id, 1))
+            
+        # 3. BFS Traversal
+        while queue:
+            bus_id, count = queue.popleft()
+            
+            # Check every stop this bus visits
+            for stop in routes[bus_id]:
+                if stop == target:
+                    return count
+                
+                # If we haven't processed this stop yet, find new buses
+                if stop not in visited_stops:
+                    visited_stops.add(stop)
+                    for next_bus in stop_to_buses[stop]:
+                        if next_bus not in visited_buses:
+                            visited_buses.add(next_bus)
+                            queue.append((next_bus, count + 1))
+                            
+        return -1
