@@ -1,0 +1,65 @@
+class Solution:
+    def catMouseGame(self, graph: List[List[int]]) -> int:
+        n = len(graph)
+        # result[m][c][turn]: 0=Draw, 1=Mouse, 2=Cat
+        result = [[[0] * 2 for _ in range(n)] for _ in range(n)]
+        
+        # degree[m][c][turn]: number of outgoing moves from this state
+        degree = [[[0] * 2 for _ in range(n)] for _ in range(n)]
+        
+        for m in range(n):
+            for c in range(n):
+                degree[m][c][0] = len(graph[m])
+                # Cat cannot move to the hole (node 0)
+                degree[m][c][1] = len([neighbor for neighbor in graph[c] if neighbor != 0])
+        
+        queue = collections.deque()
+        
+        # 1. Enqueue Terminal States
+        for i in range(1, n):
+            for t in range(2):
+                # Mouse at hole (node 0)
+                if result[0][i][t] == 0:
+                    result[0][i][t] = 1
+                    queue.append((0, i, t, 1))
+                # Cat catches Mouse (m == c)
+                if result[i][i][t] == 0:
+                    result[i][i][t] = 2
+                    queue.append((i, i, t, 2))
+                    
+        # 2. Backward Induction
+        while queue:
+            m, c, t, res = queue.popleft()
+            
+            # If we reached the starting state, we can return early
+            if m == 1 and c == 2 and t == 0:
+                return res
+            
+            # Find all previous states that could lead to (m, c, t)
+            prev_t = 1 - t
+            for prev_m, prev_c in self.get_prev_states(graph, m, c, prev_t):
+                if result[prev_m][prev_c][prev_t] == 0:
+                    # If the previous player can move to a state that wins for them
+                    if (prev_t == 0 and res == 1) or (prev_t == 1 and res == 2):
+                        result[prev_m][prev_c][prev_t] = res
+                        queue.append((prev_m, prev_c, prev_t, res))
+                    else:
+                        # Otherwise, decrement degree
+                        degree[prev_m][prev_c][prev_t] -= 1
+                        # If all possible moves lead to a win for the opponent
+                        if degree[prev_m][prev_c][prev_t] == 0:
+                            result[prev_m][prev_c][prev_t] = res
+                            queue.append((prev_m, prev_c, prev_t, res))
+                            
+        return result[1][2][0]
+
+    def get_prev_states(self, graph, m, c, prev_t):
+        parents = []
+        if prev_t == 0: # Mouse's turn to move
+            for prev_m in graph[m]:
+                parents.append((prev_m, c))
+        else: # Cat's turn to move
+            for prev_c in graph[c]:
+                if prev_c != 0: # Cat can't be at hole
+                    parents.append((m, prev_c))
+        return parents
